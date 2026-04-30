@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.bluetoothcontroller"
-        minSdk = 28
+        minSdk = 31
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
