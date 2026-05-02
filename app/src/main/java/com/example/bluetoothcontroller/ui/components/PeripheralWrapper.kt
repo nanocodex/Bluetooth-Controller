@@ -11,15 +11,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.launch
 import com.example.bluetoothcontroller.ui.theme.BluetoothControllerTheme
+import com.example.bluetoothcontroller.bluetooth.ConnectionStatus
+import com.example.bluetoothcontroller.bluetooth.ConnectionType
 
 @Composable
 fun PeripheralWrapper(
     title: String,
+    status: ConnectionStatus = ConnectionStatus(),
     onExit: () -> Unit,
+    onDrawerStateChanged: (Boolean) -> Unit = {},
+    drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed),
     content: @Composable () -> Unit
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // Control polling based on drawer state
+    LaunchedEffect(drawerState.isOpen) {
+        onDrawerStateChanged(drawerState.isOpen)
+    }
 
     // GESTURE-ONLY EXIT LOGIC
     // This intercepts the system back gesture (swipe from edge).
@@ -40,6 +49,9 @@ fun PeripheralWrapper(
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.titleLarge
                 )
+                
+                ConnectionStatusIndicator(status = status)
+
                 HorizontalDivider()
 
                 NavigationDrawerItem(
@@ -67,9 +79,130 @@ fun PeripheralWrapper(
     }
 }
 
+@Preview(showBackground = true, name = "BT Connected - Ideal")
+@Composable
+fun PeripheralWrapperIdealPreview() {
+    BluetoothControllerTheme {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Open)
+        PeripheralWrapper(
+            title = "Preview Mode",
+            status = ConnectionStatus(
+                type = ConnectionType.BLUETOOTH,
+                deviceName = "Windows PC",
+                rxStrength = -40
+            ),
+            onExit = {},
+            drawerState = drawerState
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text("Peripheral UI Here")
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "BT Connected - Acceptable")
+@Composable
+fun PeripheralWrapperAcceptablePreview() {
+    BluetoothControllerTheme {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Open)
+        PeripheralWrapper(
+            title = "Preview Mode",
+            status = ConnectionStatus(
+                type = ConnectionType.BLUETOOTH,
+                deviceName = "Windows PC",
+                rxStrength = -60
+            ),
+            onExit = {},
+            drawerState = drawerState
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text("Peripheral UI Here")
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "BT Connected - Poor")
+@Composable
+fun PeripheralWrapperPoorPreview() {
+    BluetoothControllerTheme {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Open)
+        PeripheralWrapper(
+            title = "Preview Mode",
+            status = ConnectionStatus(
+                type = ConnectionType.BLUETOOTH,
+                deviceName = "Windows PC",
+                rxStrength = -80
+            ),
+            onExit = {},
+            drawerState = drawerState
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text("Peripheral UI Here")
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "BT Connected - Unknown")
+@Composable
+fun PeripheralWrapperUnknownPreview() {
+    BluetoothControllerTheme {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Open)
+        PeripheralWrapper(
+            title = "Preview Mode",
+            status = ConnectionStatus(
+                type = ConnectionType.BLUETOOTH,
+                deviceName = "Windows PC",
+                rxStrength = null
+            ),
+            onExit = {},
+            drawerState = drawerState
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text("Peripheral UI Here")
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Disconnected")
+@Composable
+fun PeripheralWrapperDisconnectedPreview() {
+    BluetoothControllerTheme {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Open)
+        PeripheralWrapper(
+            title = "Preview Mode",
+            status = ConnectionStatus(type = ConnectionType.DISCONNECTED),
+            onExit = {},
+            drawerState = drawerState
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text("Peripheral UI Here")
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, name = "Peripheral Wrapper (Drawer Closed)")
 @Composable
-fun PeripheralWrapperPreview() {
+fun PeripheralWrapperClosedPreview() {
     BluetoothControllerTheme {
         PeripheralWrapper(
             title = "Preview Mode",
@@ -79,7 +212,7 @@ fun PeripheralWrapperPreview() {
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = androidx.compose.ui.Alignment.Center
             ) {
-                Text("Touchpad Content Here")
+                Text("Peripheral UI Here")
             }
         }
     }

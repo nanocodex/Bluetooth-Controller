@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,6 +79,7 @@ class MainActivity : ComponentActivity() {
                 if (permissionsGranted) {
                     val navController = rememberNavController()
                     val viewModel: MainViewModel = viewModel()
+                    val connectionStatus by viewModel.connectionStatus.collectAsState()
 
                     NavHost(navController = navController, startDestination = "landing") {
                         composable("landing") {
@@ -86,7 +88,11 @@ class MainActivity : ComponentActivity() {
                         composable("mouse") {
                             PeripheralWrapper(
                                 title = "Touchpad Mouse",
-                                onExit = { navController.popBackStack() }
+                                status = connectionStatus,
+                                onExit = { navController.popBackStack() },
+                                onDrawerStateChanged = { isOpen ->
+                                    viewModel.setPolling(isOpen)
+                                }
                             ) {
                                 MouseScreen(viewModel = viewModel)
                             }

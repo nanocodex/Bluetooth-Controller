@@ -9,17 +9,89 @@ import android.bluetooth.*
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Binder
-import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.Executors
+
+enum class ConnectionType {
+    BLUETOOTH, DISCONNECTED, WIRED
+}
+
+data class ConnectionStatus(
+    val type: ConnectionType = ConnectionType.DISCONNECTED,
+    val deviceName: String? = null,
+    val rxStrength: Int? = null
+)
 
 class HidDeviceService : Service() {
 
     private var bluetoothHidDevice: BluetoothHidDevice? = null
     private var connectedDevice: BluetoothDevice? = null
+    private var bluetoothGatt: BluetoothGatt? = null
     private val binder = LocalBinder()
+
+    private val _connectionStatus = MutableStateFlow(ConnectionStatus())
+    val connectionStatus = _connectionStatus.asStateFlow()
+
+    private var isPolling = false
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val rssiPoller = object : Runnable {
+        @SuppressLint("MissingPermission")
+        override fun run() {
+            if (isPolling && connectedDevice != null && bluetoothGatt != null) {
+                try {
+                    bluetoothGatt?.readRemoteRssi()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error reading RSSI", e)
+                }
+                handler.postDelayed(this, 2000) // Poll every 2 seconds
+            }
+        }
+    }
+
+    fun setPolling(enabled: Boolean) {
+        if (isPolling == enabled) return
+        isPolling = enabled
+        if (enabled) {
+            handler.post(rssiPoller)
+        } else {
+            handler.removeCallbacks(rssiPoller)
+        }
+    }
+
+    private val gattCallback = object : BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
+        override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Log.d(TAG, "GATT connected for RSSI polling")
+                gatt?.readRemoteRssi()
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.d(TAG, "GATT disconnected")
+                bluetoothGatt = null
+            }
+        }
+
+        override fun onReadRemoteRssi(gatt: BluetoothGatt?, rssi: Int, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                updateRssi(rssi)
+            }
+        }
+    }
+
+    private fun updateRssi(rssi: Int) {
+        val current = _connectionStatus.value
+        if (current.type == ConnectionType.BLUETOOTH) {
+            _connectionStatus.value = current.copy(
+                rxStrength = rssi
+            )
+        }
+    }
 
     inner class LocalBinder : Binder() {
         fun getService(): HidDeviceService = this@HidDeviceService
@@ -47,11 +119,28 @@ class HidDeviceService : Service() {
             Log.d(TAG, "HID App registered: $registered")
         }
 
+        @SuppressLint("MissingPermission")
         override fun onConnectionStateChanged(device: BluetoothDevice?, state: Int) {
             if (state == BluetoothProfile.STATE_CONNECTED) {
                 connectedDevice = device
+                _connectionStatus.value = ConnectionStatus(
+                    type = ConnectionType.BLUETOOTH,
+                    deviceName = device?.name ?: "Unknown Device",
+                    rxStrength = -50
+                )
+                
+                // Start RSSI polling via GATT
+                bluetoothGatt = device?.connectGatt(this@HidDeviceService, false, gattCallback)
+                if (isPolling) {
+                    handler.post(rssiPoller)
+                }
+                
             } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                handler.removeCallbacks(rssiPoller)
+                bluetoothGatt?.close()
+                bluetoothGatt = null
                 connectedDevice = null
+                _connectionStatus.value = ConnectionStatus(type = ConnectionType.DISCONNECTED)
             }
         }
     }
@@ -83,11 +172,7 @@ class HidDeviceService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
     }
 
     @SuppressLint("MissingPermission")
