@@ -7,4 +7,10 @@
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+
+# Ignore release binaries
+/app/release
+
+# Never accidentally upload my own signing key
+*.jks
+*.keystore
