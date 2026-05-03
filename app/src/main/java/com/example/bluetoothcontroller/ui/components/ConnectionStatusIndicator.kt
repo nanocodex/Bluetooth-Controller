@@ -71,7 +71,7 @@ fun ConnectionStatusIndicator(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Note: Live Transmission (TX) strength is not directly available on Android for this connection type. To measure TX, you can use specialized Bluetooth diagnostics tools on the receiving device.",
+                    text = "Note: Only Live Reception (RX) data is shown. Live Transmission (TX) strength is not directly available on Android for this connection type. To measure TX, you can use specialized Bluetooth diagnostics tools on the receiving device.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     lineHeight = TextUnit.Unspecified
@@ -98,9 +98,12 @@ private fun StrengthIndicator(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Received (RX)", style = MaterialTheme.typography.bodySmall)
+            Text(text = "Signal Strength", style = MaterialTheme.typography.bodySmall)
             Text(
-                text = strength?.let { "$it dBm" } ?: "N/A",
+                text = strength?.let { 
+                    val percent = ((it - MIN_RSSI).toFloat() / (MAX_RSSI - MIN_RSSI) * 100).toInt().coerceIn(0, 100)
+                    "$percent%"
+                } ?: "N/A",
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = color
@@ -117,23 +120,6 @@ private fun StrengthIndicator(
             strokeCap = StrokeCap.Round,
             drawStopIndicator = {}
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Poor ($MIN_RSSI)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-            Text(
-                text = "Strong ($MAX_RSSI)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
     }
 }
 
