@@ -89,7 +89,8 @@ fun PeripheralWrapperIdealPreview() {
             status = ConnectionStatus(
                 type = ConnectionType.BLUETOOTH,
                 deviceName = "Windows PC",
-                rxStrength = -40
+                rxStrength = -40,
+                latencyMs = 10
             ),
             onExit = {},
             drawerState = drawerState
@@ -114,7 +115,8 @@ fun PeripheralWrapperAcceptablePreview() {
             status = ConnectionStatus(
                 type = ConnectionType.BLUETOOTH,
                 deviceName = "Windows PC",
-                rxStrength = -60
+                rxStrength = -60,
+                latencyMs = 40
             ),
             onExit = {},
             drawerState = drawerState
@@ -139,7 +141,8 @@ fun PeripheralWrapperPoorPreview() {
             status = ConnectionStatus(
                 type = ConnectionType.BLUETOOTH,
                 deviceName = "Windows PC",
-                rxStrength = -80
+                rxStrength = -80,
+                latencyMs = 120
             ),
             onExit = {},
             drawerState = drawerState
@@ -164,7 +167,8 @@ fun PeripheralWrapperUnknownPreview() {
             status = ConnectionStatus(
                 type = ConnectionType.BLUETOOTH,
                 deviceName = "Windows PC",
-                rxStrength = null
+                rxStrength = null,
+                latencyMs = null
             ),
             onExit = {},
             drawerState = drawerState

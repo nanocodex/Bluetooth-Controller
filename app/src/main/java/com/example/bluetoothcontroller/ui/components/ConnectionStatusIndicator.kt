@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.bluetoothcontroller.bluetooth.ConnectionStatus
 import com.example.bluetoothcontroller.bluetooth.ConnectionType
 
@@ -58,22 +59,33 @@ fun ConnectionStatusIndicator(
                 status.deviceName?.let {
                     Text(
                         text = "Connected to: $it",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                )
 
                 StrengthIndicator(
                     strength = status.rxStrength
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+
+                LatencyIndicator(
+                    latency = status.latencyMs
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Note: Only Live Reception (RX) data is shown. Live Transmission (TX) strength is not directly available on Android for this connection type. To measure TX, you can use specialized Bluetooth diagnostics tools on the receiving device.",
+                    text = "Note: Only reception (RX) strength is shown. Transmission (TX) metrics are unavailable.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     lineHeight = TextUnit.Unspecified
                 )
             } else {
@@ -92,18 +104,23 @@ private fun StrengthIndicator(
     strength: Int?
 ) {
     val color = getStrengthColor(strength)
+    val percent = strength?.let {
+        ((it - MIN_RSSI).toFloat() / (MAX_RSSI - MIN_RSSI) * 100).toInt().coerceIn(0, 100)
+    }
 
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Signal Strength", style = MaterialTheme.typography.bodySmall)
             Text(
-                text = strength?.let { 
-                    val percent = ((it - MIN_RSSI).toFloat() / (MAX_RSSI - MIN_RSSI) * 100).toInt().coerceIn(0, 100)
-                    "$percent%"
-                } ?: "N/A",
+                text = "Signal Strength",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = percent?.let { "$it%" } ?: "N/A",
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = color
@@ -113,8 +130,7 @@ private fun StrengthIndicator(
             progress = { calculateProgress(strength) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(8.dp)
-                .padding(top = 4.dp),
+                .height(6.dp),
             color = color,
             trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
             strokeCap = StrokeCap.Round,
@@ -139,6 +155,46 @@ private fun getStrengthColor(strength: Int?): Color {
     }
 }
 
+@Composable
+private fun LatencyIndicator(
+    latency: Long?
+) {
+    val color = getLatencyColor(latency)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Link Latency",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+        )
+        Text(
+            text = latency?.let { "$it ms" } ?: "N/A",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
+
+private fun getLatencyColor(latency: Long?): Color {
+    return when {
+        latency == null -> Color.Gray
+        latency < 40 -> Color(0xFF4CAF50) // Green (Ideal)
+        latency < 120 -> Color(0xFFFFC107) // Amber (Acceptable)
+        else -> Color(0xFFF44336) // Red (Poor)
+    }
+}
+
 private fun getIconForType(type: ConnectionType): ImageVector {
     return when (type) {
         ConnectionType.BLUETOOTH -> Icons.Default.Bluetooth
@@ -152,5 +208,87 @@ private fun getColorForType(type: ConnectionType): Color {
         ConnectionType.BLUETOOTH -> Color(0xFF2196F3)
         ConnectionType.WIRED -> Color(0xFF9C27B0)
         ConnectionType.DISCONNECTED -> Color.Gray
+    }
+}
+
+@Preview(showBackground = true, name = "Ideal Connection")
+@Composable
+fun PreviewConnectionIdeal() {
+    MaterialTheme {
+        Box(Modifier.padding(16.dp)) {
+            ConnectionStatusIndicator(
+                status = ConnectionStatus(
+                    type = ConnectionType.BLUETOOTH,
+                    deviceName = "Windows PC",
+                    rxStrength = -40,
+                    latencyMs = 10
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Acceptable Connection")
+@Composable
+fun PreviewConnectionAcceptable() {
+    MaterialTheme {
+        Box(Modifier.padding(16.dp)) {
+            ConnectionStatusIndicator(
+                status = ConnectionStatus(
+                    type = ConnectionType.BLUETOOTH,
+                    deviceName = "Windows PC",
+                    rxStrength = -65,
+                    latencyMs = 40
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Poor Connection")
+@Composable
+fun PreviewConnectionPoor() {
+    MaterialTheme {
+        Box(Modifier.padding(16.dp)) {
+            ConnectionStatusIndicator(
+                status = ConnectionStatus(
+                    type = ConnectionType.BLUETOOTH,
+                    deviceName = "Windows PC",
+                    rxStrength = -80,
+                    latencyMs = 120
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Unknown State")
+@Composable
+fun PreviewConnectionUnknown() {
+    MaterialTheme {
+        Box(Modifier.padding(16.dp)) {
+            ConnectionStatusIndicator(
+                status = ConnectionStatus(
+                    type = ConnectionType.BLUETOOTH,
+                    deviceName = "Unknown Device",
+                    rxStrength = null,
+                    latencyMs = null
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Disconnected")
+@Composable
+fun PreviewConnectionDisconnected() {
+    MaterialTheme {
+        Box(Modifier.padding(16.dp)) {
+            ConnectionStatusIndicator(
+                status = ConnectionStatus(
+                    type = ConnectionType.DISCONNECTED
+                )
+            )
+        }
     }
 }

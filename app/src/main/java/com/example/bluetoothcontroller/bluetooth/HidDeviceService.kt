@@ -25,7 +25,8 @@ enum class ConnectionType {
 data class ConnectionStatus(
     val type: ConnectionType = ConnectionType.DISCONNECTED,
     val deviceName: String? = null,
-    val rxStrength: Int? = null
+    val rxStrength: Int? = null,
+    val latencyMs: Long? = null
 )
 
 class HidDeviceService : Service() {
@@ -39,6 +40,7 @@ class HidDeviceService : Service() {
     val connectionStatus = _connectionStatus.asStateFlow()
 
     private var isPolling = false
+    private var lastRssiRequestTime: Long = 0
 
     private val handler = Handler(Looper.getMainLooper())
     private val rssiPoller = object : Runnable {
@@ -46,6 +48,7 @@ class HidDeviceService : Service() {
         override fun run() {
             if (isPolling && connectedDevice != null && bluetoothGatt != null) {
                 try {
+                    lastRssiRequestTime = System.currentTimeMillis()
                     bluetoothGatt?.readRemoteRssi()
                 } catch (e: Exception) {
                     Log.e(TAG, "Error reading RSSI", e)
@@ -79,16 +82,18 @@ class HidDeviceService : Service() {
 
         override fun onReadRemoteRssi(gatt: BluetoothGatt?, rssi: Int, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                updateRssi(rssi)
+                val latency = System.currentTimeMillis() - lastRssiRequestTime
+                updateRssiAndLatency(rssi, latency)
             }
         }
     }
 
-    private fun updateRssi(rssi: Int) {
+    private fun updateRssiAndLatency(rssi: Int, latency: Long) {
         val current = _connectionStatus.value
         if (current.type == ConnectionType.BLUETOOTH) {
             _connectionStatus.value = current.copy(
-                rxStrength = rssi
+                rxStrength = rssi,
+                latencyMs = latency
             )
         }
     }
@@ -126,7 +131,7 @@ class HidDeviceService : Service() {
                 _connectionStatus.value = ConnectionStatus(
                     type = ConnectionType.BLUETOOTH,
                     deviceName = device?.name ?: "Unknown Device",
-                    rxStrength = -50
+                    rxStrength = null
                 )
                 
                 // Start RSSI polling via GATT
